@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="robots" content="noindex">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Google Reviews Dashboard</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: #222222;
+    --muted: #666666;
+    --line: #e6e6e6;
+    --card: #f7f8fa;
+    --accent: #cc0000;
+    --good: #1b8a3e;
+    --warn: #e67e22;
+    --bad: #c62828;
+    --head: #111111;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 28px 24px 64px; }
+  h1 {
+    margin: 0 0 6px;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--head);
+    letter-spacing: -0.3px;
+  }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .filters {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    padding: 14px 16px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    margin-bottom: 22px;
+  }
+  .filters label {
+    display: flex; flex-direction: column; gap: 4px;
+    font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted);
+    min-width: 160px; flex: 1;
+  }
+  .filters select {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px; color: var(--ink);
+    border: 1px solid #cccccc; background: #fff;
+    padding: 8px 10px; height: 38px;
+  }
+  /* Searchable multi-select */
+  .ms {
+    position: relative;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    color: var(--ink);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .ms-control {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+    min-height: 38px;
+    border: 1px solid #cccccc; background: #fff;
+    padding: 4px 8px;
+    cursor: text;
+  }
+  .ms-control:focus-within { border-color: #999; }
+  .ms-tags { display: flex; flex-wrap: wrap; gap: 4px; max-width: 100%; }
+  .ms-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #f0f0f0; border: 1px solid #ddd;
+    padding: 2px 6px; font-size: 12px; line-height: 1.3;
+    max-width: 220px;
+  }
+  .ms-tag span {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;
+  }
+  .ms-tag button {
+    border: 0; background: transparent; color: #666; cursor: pointer;
+    font-size: 14px; line-height: 1; padding: 0 2px;
+  }
+  .ms-tag button:hover { color: var(--accent); }
+  .ms-search {
+    border: 0; outline: none; flex: 1; min-width: 72px;
+    font-family: inherit; font-size: 14px; padding: 4px 2px;
+    background: transparent; color: var(--ink);
+  }
+  .ms-placeholder { color: #999; font-size: 13px; padding: 2px 0; }
+  .ms-dropdown {
+    position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 2px);
+    max-height: 240px; overflow-y: auto;
+    background: #fff; border: 1px solid #cccccc;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  }
+  .ms-opt {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 10px; cursor: pointer; font-size: 13px; line-height: 1.35;
+  }
+  .ms-opt:hover, .ms-opt.hl { background: #fff8f8; }
+  .ms-opt input { margin-top: 2px; flex-shrink: 0; }
+  .ms-empty { padding: 10px; color: #999; font-size: 13px; }
+  .ms-actions {
+    display: flex; justify-content: space-between; gap: 8px;
+    padding: 6px 10px; border-bottom: 1px solid var(--line);
+    background: #fafafa; font-size: 12px;
+  }
+  .ms-actions button {
+    border: 0; background: transparent; color: var(--accent);
+    cursor: pointer; font-family: inherit; font-size: 12px; padding: 2px 0;
+  }
+  .ms-actions button:hover { text-decoration: underline; }
+  h2 {
+    font-size: 18px; margin: 28px 0 8px; color: var(--head);
+  }
+  .rule { height: 2px; width: 36px; background: var(--accent); margin-bottom: 14px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .tile {
+    background: var(--card);
+    border-top: 3px solid var(--accent);
+    padding: 18px 12px 16px;
+    text-align: center;
+  }
+  .tile .n { font-size: 30px; font-weight: 700; color: var(--accent); line-height: 1; }
+  .tile .l {
+    margin-top: 8px; font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .tile .d { margin-top: 6px; font-size: 13px; font-weight: 700; }
+  .up { color: var(--good); }
+  .down { color: var(--bad); }
+  .flat { color: var(--muted); }
+  .hint { font-size: 13px; color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
+  table.perf { width: 100%; border-collapse: collapse; border-top: 2px solid var(--accent); font-size: 13px; }
+  table.perf th, table.perf td { padding: 9px 7px; border-bottom: 1px solid var(--line); }
+  table.perf th {
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--muted); font-weight: 700; background: #fafafa;
+  }
+  table.perf .grp { background: var(--accent); color: #fff; letter-spacing: 1.2px; text-align: center; }
+  table.perf td.r { text-align: right; }
+  table.perf td.c { text-align: center; }
+  table.perf tbody tr:hover { background: #fff8f8; }
+  .rate-g { color: var(--good); font-weight: 700; }
+  .rate-a { color: var(--warn); font-weight: 700; }
+  .rate-r { color: var(--bad); font-weight: 700; }
+  .emp { width: 100%; border-collapse: collapse; border-top: 2px solid var(--accent); }
+  .emp td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
+  .emp .rk { width: 36px; text-align: center; color: var(--accent); font-size: 18px; font-weight: 700; }
+  .emp .nm { font-size: 14px; }
+  .emp .nm b { color: var(--ink); }
+  .emp .lc { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .emp .ct { text-align: right; font-size: 20px; color: var(--accent); font-weight: 700; }
+  .theme, .rev {
+    padding: 14px 8px; border-bottom: 1px solid var(--line);
+  }
+  .theme b { color: var(--good); }
+  .quote { font-style: italic; margin-top: 8px; line-height: 1.5; }
+  .who { font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: 0.4px; }
+  .stars { letter-spacing: 1px; }
+  .locked {
+    padding: 22px 16px; background: var(--card); border: 1px dashed #cccccc;
+    color: var(--muted); font-size: 14px;
+  }
+  .exec {
+    margin: 0 0 22px;
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+  .exec p { margin: 0 0 14px; max-width: 920px; }
+  .exec-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-top: 3px solid var(--accent); padding: 14px 16px;
+    margin-top: 8px; max-width: 920px;
+  }
+  .exec-card h3 {
+    margin: 0 0 10px; font-size: 12px; letter-spacing: 0.8px;
+    text-transform: uppercase; color: var(--accent);
+  }
+  .exec-card ul { margin: 0; padding-left: 18px; }
+  .exec-card li { margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+  .foot { margin-top: 36px; font-size: 11px; color: #999; }
+  @media (max-width: 900px) {
+    .tiles { grid-template-columns: 1fr 1fr; }
+    .filters label { min-width: 140px; }
+    table.perf { font-size: 12px; }
+  }
+  .sample-banner { background:#8B0000; color:#fff; text-align:center; font-size:13px; font-weight:700; padding:8px 16px; letter-spacing:.2px; }
+</style>
+<script src="reviews_data.js"></script>
+</head>
+<body>
+<div class="sample-banner">SAMPLE / FICTIONAL DATA: review text is synthetic; names, sites and volumes are invented. Layout example only.</div>
+<div class="wrap">
+  <h1>Google Reviews Dashboard</h1>
+  <div class="sub" id="subtitle"></div>
+
+  <div class="filters">
+    <label>Market
+      <div class="ms" id="fMarket"></div>
+    </label>
+    <label>Manager
+      <div class="ms" id="fManager"></div>
+    </label>
+    <label>Location Function
+      <div class="ms" id="fFunction"></div>
+    </label>
+    <label>Location
+      <div class="ms" id="fLocation"></div>
+    </label>
+    <label>Year
+      <select id="fYear"></select>
+    </label>
+    <label>Month
+      <select id="fMonth"></select>
+    </label>
+  </div>
+
+  <h2>Performance Highlights</h2>
+  <div class="rule"></div>
+  <div class="exec" id="execBox"></div>
+
+  <h2>YTD Summary</h2>
+  <div class="rule"></div>
+  <div class="tiles" id="ytdTiles"></div>
+
+  <h2 id="lmTitle">Last Month Summary</h2>
+  <div class="rule"></div>
+  <div class="tiles" id="lmTiles"></div>
+
+  <h2>Country / Market Roll-up</h2>
+  <div class="rule"></div>
+  <div style="overflow-x:auto">
+    <table class="perf" id="mktTable"></table>
+  </div>
+
+  <h2>Location Function — Selected Month</h2>
+  <div class="rule"></div>
+  <div style="overflow-x:auto">
+    <table class="perf" id="fnTable"></table>
+  </div>
+
+  <h2>Location Performance</h2>
+  <div class="rule"></div>
+  <p class="hint">
+    Selected-month rating cell is colour-coded:
+    <b class="rate-g">green = 5.00</b> ·
+    <b class="rate-a">orange = 4.50–4.99</b> ·
+    <b class="rate-r">red ≤ 4.49</b>.
+    Ranked by YTD reviews.
+  </p>
+  <div style="overflow-x:auto">
+    <table class="perf" id="locTable"></table>
+  </div>
+
+  <h2>Top Most Mentioned Employees YTD (4–5★ Reviews)</h2>
+  <div class="rule"></div>
+  <table class="emp" id="empTable"></table>
+
+  <div id="sentimentBlock"></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+(function () {
+  if (!window.GR_DATA) {
+  document.body.innerHTML = '<p style="font-family:Arial,sans-serif;padding:24px"><b>Reviews data not loaded.</b> Keep <code>reviews_data.js</code> next to this page.</p>';
+  return;
+}
+const D = window.GR_DATA;
+  const MN = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const $ = (id) => document.getElementById(id);
+
+  function fmt(n) { return (n == null || isNaN(n)) ? "—" : Number(n).toLocaleString("en-GB"); }
+  function avg(n, s) { return n ? (s / n) : null; }
+  function avgTxt(a) { return a == null ? "—" : a.toFixed(2); }
+  function deltaHtml(cur, prev, dec) {
+    if (cur == null || prev == null) return '<span class="flat">—</span>';
+    const d = cur - prev;
+    const z = Math.abs(d) < (dec ? 0.005 : 0.5);
+    const txt = (d > 0 ? "+" : "") + (dec ? d.toFixed(2) : String(Math.round(d)));
+    if (z) return '<span class="flat">■ +0.00</span> vs prior month';
+    const cls = d > 0 ? "up" : "down";
+    const arrow = d > 0 ? "▲" : "▼";
+    return '<span class="' + cls + '">' + arrow + " " + txt + "</span> vs prior month";
+  }
+  function rateCls(a) {
+    if (a == null) return "";
+    if (a >= 4.995) return "rate-g";
+    if (a >= 4.5) return "rate-a";
+    return "rate-r";
+  }
+  function stars(r) {
+    const on = "★".repeat(r), off = "☆".repeat(5 - r);
+    const col = r <= 2 ? "var(--bad)" : (r === 3 ? "var(--warn)" : "var(--good)");
+    return '<span class="stars" style="color:' + col + '">' + on + off + "</span>";
+  }
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function uniqueSorted(arr) {
+    return Array.from(new Set(arr)).sort(function (a, b) {
+      return String(a).localeCompare(String(b), undefined, { sensitivity: "base" });
+    });
+  }
+
+  /* ---------- Searchable multi-select ---------- */
+  function MultiSelect(root, opts) {
+    this.root = root;
+    this.placeholder = opts.placeholder || "All";
+    this.onChange = opts.onChange || function () {};
+    this.options = []; // {value, label}
+    this.selected = new Set();
+    this.open = false;
+    this.query = "";
+    this.hl = -1;
+
+    root.innerHTML =
+      '<div class="ms-control" tabindex="0">' +
+        '<div class="ms-tags"></div>' +
+        '<span class="ms-placeholder"></span>' +
+        '<input class="ms-search" type="text" autocomplete="off" spellcheck="false" />' +
+      "</div>" +
+      '<div class="ms-dropdown" hidden></div>';
+
+    this.control = root.querySelector(".ms-control");
+    this.tagsEl = root.querySelector(".ms-tags");
+    this.phEl = root.querySelector(".ms-placeholder");
+    this.input = root.querySelector(".ms-search");
+    this.drop = root.querySelector(".ms-dropdown");
+
+    const self = this;
+    this.control.addEventListener("click", function (e) {
+      if (e.target.closest(".ms-tag button")) return;
+      self.openDrop();
+      self.input.focus();
+    });
+    this.input.addEventListener("focus", function () { self.openDrop(); });
+    this.input.addEventListener("input", function () {
+      self.query = self.input.value || "";
+      self.hl = 0;
+      self.renderDrop();
+      self.openDrop();
+    });
+    this.input.addEventListener("keydown", function (e) {
+      const vis = self.visibleOptions();
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        self.openDrop();
+        self.hl = Math.min(self.hl + 1, vis.length - 1);
+        self.renderDrop();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        self.hl = Math.max(self.hl - 1, 0);
+        self.renderDrop();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (self.open && vis[self.hl]) self.toggle(vis[self.hl].value);
+      } else if (e.key === "Escape") {
+        self.closeDrop();
+      } else if (e.key === "Backspace" && !self.input.value && self.selected.size) {
+        const arr = Array.from(self.selected);
+        self.selected.delete(arr[arr.length - 1]);
+        self.renderControl();
+        self.renderDrop();
+        self.onChange();
+      }
+    });
+    document.addEventListener("click", function (e) {
+      if (!root.contains(e.target)) self.closeDrop();
+    });
+  }
+  MultiSelect.prototype.setOptions = function (items, keepSelected) {
+    this.options = (items || []).map(function (it) {
+      if (typeof it === "string") return { value: it, label: it };
+      return { value: it.value, label: it.label != null ? it.label : it.value };
+    });
+    if (keepSelected) {
+      const valid = new Set(this.options.map(function (o) { return o.value; }));
+      Array.from(this.selected).forEach(function (v) {
+        if (!valid.has(v)) this.selected.delete(v);
+      }, this);
+    } else {
+      this.selected.clear();
+    }
+    this.query = "";
+    this.input.value = "";
+    this.hl = -1;
+    this.renderControl();
+    this.renderDrop();
+  };
+  MultiSelect.prototype.getSelected = function () {
+    return Array.from(this.selected);
+  };
+  MultiSelect.prototype.visibleOptions = function () {
+    const q = (this.query || "").trim().toLowerCase();
+    if (!q) return this.options.slice();
+    return this.options.filter(function (o) {
+      return String(o.label).toLowerCase().indexOf(q) >= 0 ||
+        String(o.value).toLowerCase().indexOf(q) >= 0;
+    });
+  };
+  MultiSelect.prototype.toggle = function (value) {
+    if (value == null || value === "") return;
+    if (this.selected.has(value)) this.selected.delete(value);
+    else this.selected.add(value);
+    this.renderControl();
+    this.renderDrop();
+    this.onChange();
+  };
+  MultiSelect.prototype.valueAt = function (idx) {
+    const i = parseInt(idx, 10);
+    if (isNaN(i) || i < 0 || i >= this.options.length) return null;
+    return this.options[i].value;
+  };
+  MultiSelect.prototype.clear = function () {
+    if (!this.selected.size) return;
+    this.selected.clear();
+    this.renderControl();
+    this.renderDrop();
+    this.onChange();
+  };
+  MultiSelect.prototype.selectAllVisible = function () {
+    const self = this;
+    this.visibleOptions().forEach(function (o) { self.selected.add(o.value); });
+    this.renderControl();
+    this.renderDrop();
+    this.onChange();
+  };
+  MultiSelect.prototype.openDrop = function () {
+    this.open = true;
+    this.drop.hidden = false;
+    this.renderDrop();
+  };
+  MultiSelect.prototype.closeDrop = function () {
+    this.open = false;
+    this.drop.hidden = true;
+    this.query = "";
+    this.input.value = "";
+    this.hl = -1;
+    this.renderControl();
+  };
+  MultiSelect.prototype.renderControl = function () {
+    const self = this;
+    const labelOf = {};
+    this.options.forEach(function (o) { labelOf[o.value] = o.label; });
+    const vals = Array.from(this.selected);
+    this.tagsEl.innerHTML = vals.map(function (v) {
+      const ix = self.options.findIndex(function (o) { return o.value === v; });
+      return '<span class="ms-tag"><span title="' + esc(labelOf[v] || v) + '">' +
+        esc(labelOf[v] || v) + '</span><button type="button" data-i="' + ix +
+        '" aria-label="Remove">&times;</button></span>';
+    }).join("");
+    Array.prototype.forEach.call(this.tagsEl.querySelectorAll("button"), function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const val = self.valueAt(btn.getAttribute("data-i"));
+        if (val != null) self.selected.delete(val);
+        self.renderControl();
+        self.renderDrop();
+        self.onChange();
+      });
+    });
+    if (vals.length) {
+      this.phEl.textContent = "";
+      this.phEl.style.display = "none";
+      this.input.placeholder = "Search…";
+    } else {
+      this.phEl.style.display = "";
+      this.phEl.textContent = this.placeholder;
+      this.input.placeholder = "";
+    }
+  };
+  MultiSelect.prototype.renderDrop = function () {
+    if (!this.open) return;
+    const self = this;
+    const vis = this.visibleOptions();
+    if (this.hl >= vis.length) this.hl = vis.length - 1;
+    let html = '<div class="ms-actions">' +
+      '<button type="button" data-act="all">Select visible</button>' +
+      '<button type="button" data-act="clear">Clear</button></div>';
+    if (!vis.length) {
+      html += '<div class="ms-empty">No matches</div>';
+    } else {
+      html += vis.map(function (o, i) {
+        const optIdx = self.options.indexOf(o);
+        const checked = self.selected.has(o.value) ? " checked" : "";
+        const hl = i === self.hl ? " hl" : "";
+        return '<label class="ms-opt' + hl + '"><input type="checkbox"' + checked +
+          ' data-i="' + optIdx + '" /><span>' + esc(o.label) + "</span></label>";
+      }).join("");
+    }
+    this.drop.innerHTML = html;
+    this.drop.querySelector('[data-act="all"]').addEventListener("click", function (e) {
+      e.preventDefault(); e.stopPropagation();
+      self.selectAllVisible();
+    });
+    this.drop.querySelector('[data-act="clear"]').addEventListener("click", function (e) {
+      e.preventDefault(); e.stopPropagation();
+      self.clear();
+    });
+    Array.prototype.forEach.call(this.drop.querySelectorAll(".ms-opt input"), function (inp) {
+      inp.addEventListener("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        self.toggle(self.valueAt(inp.getAttribute("data-i")));
+        self.input.focus();
+      });
+    });
+    Array.prototype.forEach.call(this.drop.querySelectorAll(".ms-opt"), function (row) {
+      row.addEventListener("mousedown", function (e) {
+        // keep focus in search box
+        if (e.target.tagName !== "INPUT") e.preventDefault();
+      });
+      row.addEventListener("click", function (e) {
+        if (e.target.tagName === "INPUT") return;
+        e.preventDefault();
+        const inp = row.querySelector("input");
+        if (inp) self.toggle(self.valueAt(inp.getAttribute("data-i")));
+        self.input.focus();
+      });
+    });
+  };
+
+  function fillSelect(el, items, selected) {
+    el.innerHTML = items.map(function (it) {
+      const v = it.value, t = it.label;
+      return '<option value="' + esc(v) + '"' + (v === selected ? " selected" : "") + ">" + esc(t) + "</option>";
+    }).join("");
+  }
+
+  const fY = $("fYear"), fMo = $("fMonth");
+  const locByManager = D.locByManager || {};
+  const locFunctions = D.locFunctions || {};
+  const locLeadership = D.locLeadership || {};
+  const FN_OPTIONS = (D.meta && D.meta.locationFunctions) || [
+    "Centre", "Store", "Service", "Collection Point", "Pop Up", "Certified Pre-Owned", "Delivery",
+    "Self-serve Test Drive"
+  ];
+  const LEAD_FNS = (D.meta && D.meta.leadershipFunctions) || [
+    "Centre", "Store", "Service", "Collection Point", "Pop Up", "Certified Pre-Owned", "Delivery"
+  ];
+  const years = uniqueSorted(D.reviews.map(function (r) { return r.y; })).reverse();
+  const defaultYear = D.meta.latestYear;
+  const defaultMonth = String(D.meta.latestMonth);
+
+  fillSelect(fY, years.map(function (y) { return { value: String(y), label: String(y) }; }), String(defaultYear));
+
+  function locMarket() {
+    const map = {};
+    D.reviews.forEach(function (r) { if (!map[r.loc]) map[r.loc] = r.m; });
+    return map;
+  }
+  const LOC_MKT = locMarket();
+
+  function marketOk(m) {
+    const sel = fM.getSelected();
+    if (!sel.length) return true;
+    return sel.indexOf(m) >= 0;
+  }
+
+  function functionOk(loc) {
+    const sel = fFn.getSelected();
+    if (!sel.length) return true;
+    const fns = locFunctions[loc] || [];
+    for (let i = 0; i < sel.length; i++) {
+      if (fns.indexOf(sel[i]) >= 0) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Effective Location Function tag(s) for roll-ups / MoM table.
+   *
+   * Dual Centre/CPO sites that also do Delivery (tagged both, but "Delivery"
+   * is not in the public name) must not double-count:
+   *  - No function filter → name split only (Centre / CPO / …), drop Delivery.
+   *  - Delivery filter selected → roll into Delivery only (one row).
+   *  - Other function filter(s) → intersect with selection; dual sites keep
+   *    their primary tag(s), not Delivery, unless Delivery is also selected
+   *    (then Delivery only — see above).
+   * Pure Delivery / Collection Point sites keep their single tag always.
+   */
+  function effectiveFunctions(loc) {
+    const fns = locFunctions[loc] || [];
+    if (!fns.length) return [];
+    const sel = fFn.getSelected();
+    const hasDelivery = fns.indexOf("Delivery") >= 0;
+    const primaries = fns.filter(function (f) { return f !== "Delivery"; });
+    const dualDelivery = hasDelivery && primaries.length > 0;
+
+    if (!sel.length) {
+      // Unfiltered: name-based split only — not synthetic Delivery on duals.
+      return dualDelivery ? primaries.slice() : fns.slice();
+    }
+
+    if (sel.indexOf("Delivery") >= 0 && dualDelivery) {
+      // Delivery filter on: dual Centre/CPO+Delivery → Delivery only.
+      return ["Delivery"];
+    }
+
+    // Other filters: only selected tags that apply (no extra Delivery roll-in).
+    return fns.filter(function (f) { return sel.indexOf(f) >= 0; });
+  }
+
+  function managerLocUnion() {
+    const mgrs = fMgr.getSelected();
+    if (!mgrs.length) return null;
+    const set = {};
+    mgrs.forEach(function (mgr) {
+      (locByManager[mgr] || []).forEach(function (loc) { set[loc] = true; });
+    });
+    return set;
+  }
+
+  function isLeadershipDefaultLoc(loc) {
+    if (Object.prototype.hasOwnProperty.call(locLeadership, loc)) {
+      return !!locLeadership[loc];
+    }
+    const fns = locFunctions[loc] || [];
+    if (!fns.length) return true;
+    for (let i = 0; i < fns.length; i++) {
+      if (LEAD_FNS.indexOf(fns[i]) >= 0) return true;
+    }
+    return false;
+  }
+
+  function locOk(loc) {
+    const locs = fL.getSelected();
+    if (locs.length) return locs.indexOf(loc) >= 0;
+    if (!functionOk(loc)) return false;
+    // Leadership default: hide Self-serve-only unless user picks that function
+    // (or any function / explicit location).
+    const fnSel = fFn.getSelected();
+    if (!fnSel.length && !isLeadershipDefaultLoc(loc)) return false;
+    const mgrSet = managerLocUnion();
+    if (mgrSet) return !!mgrSet[loc];
+    return true;
+  }
+
+  function singleSelectedLocation() {
+    const locs = fL.getSelected();
+    return locs.length === 1 ? locs[0] : null;
+  }
+
+  function selectedMarketsLabel() {
+    const sel = fM.getSelected();
+    if (!sel.length) return "All markets";
+    return sel.join(", ");
+  }
+
+  let suppress = false;
+
+  function onFilterChange(source) {
+    if (suppress) return;
+    suppress = true;
+    try {
+      if (source === "market" || source === "init") refreshManagers(true);
+      if (source === "market" || source === "manager" || source === "function" || source === "init") {
+        refreshLocations(true);
+      }
+      refreshMonths();
+      render();
+    } finally {
+      suppress = false;
+    }
+  }
+
+  const fM = new MultiSelect($("fMarket"), {
+    placeholder: "All markets",
+    onChange: function () { onFilterChange("market"); }
+  });
+  const fMgr = new MultiSelect($("fManager"), {
+    placeholder: "All managers",
+    onChange: function () { onFilterChange("manager"); }
+  });
+  const fFn = new MultiSelect($("fFunction"), {
+    placeholder: "All functions",
+    onChange: function () { onFilterChange("function"); }
+  });
+  const fL = new MultiSelect($("fLocation"), {
+    placeholder: "All locations",
+    onChange: function () { onFilterChange("location"); }
+  });
+
+  fM.setOptions(D.meta.markets.map(function (m) { return { value: m, label: m }; }), false);
+  fFn.setOptions(FN_OPTIONS.map(function (f) { return { value: f, label: f }; }), false);
+
+  function refreshManagers(keep) {
+    const names = Object.keys(locByManager).filter(function (mgr) {
+      const mkts = fM.getSelected();
+      if (!mkts.length) return true;
+      return (locByManager[mgr] || []).some(function (loc) {
+        return mkts.indexOf(LOC_MKT[loc]) >= 0;
+      });
+    }).sort(function (a, b) { return a.toLowerCase().localeCompare(b.toLowerCase()); });
+    fMgr.setOptions(names.map(function (n) { return { value: n, label: n }; }), !!keep);
+  }
+
+  function refreshLocations(keep) {
+    const mgrSet = managerLocUnion();
+    const locs = uniqueSorted(D.reviews.filter(function (r) {
+      if (!marketOk(r.m)) return false;
+      if (mgrSet && !mgrSet[r.loc]) return false;
+      if (!functionOk(r.loc)) return false;
+      return true;
+    }).map(function (r) { return r.loc; }));
+    fL.setOptions(locs.map(function (l) { return { value: l, label: l }; }), !!keep);
+  }
+
+  function refreshMonths() {
+    const y = +fY.value;
+    const months = uniqueSorted(D.reviews.filter(function (r) {
+      return r.y === y && marketOk(r.m) && locOk(r.loc);
+    }).map(function (r) { return r.mo; }));
+    const keep = fMo.value;
+    const items = [{ value: "ALL", label: "All months" }].concat(
+      months.map(function (mo) { return { value: String(mo), label: MN[mo] }; })
+    );
+    // Prefer the builder's incomplete-month-aware latestMonth (e.g. July when
+    // August is only partial), not the last calendar month present in the file.
+    const preferred = String(D.meta.latestMonth);
+    let sel;
+    if (keep && (keep === "ALL" || months.indexOf(+keep) >= 0)) {
+      sel = keep;
+    } else if (months.indexOf(+preferred) >= 0) {
+      sel = preferred;
+    } else {
+      sel = months.length ? String(months[months.length - 1]) : "ALL";
+    }
+    fillSelect(fMo, items, sel);
+  }
+
+  function filteredReviews() {
+    const y = +fY.value;
+    return D.reviews.filter(function (r) {
+      return r.y === y && marketOk(r.m) && locOk(r.loc);
+    });
+  }
+
+  function period() {
+    const y = +fY.value;
+    const moVal = fMo.value;
+    const rows = filteredReviews();
+    const months = uniqueSorted(rows.map(function (r) { return r.mo; }));
+    const last = (moVal === "ALL")
+      ? (months.length ? months[months.length - 1] : D.meta.latestMonth)
+      : +moVal;
+    const prev = last === 1 ? 12 : last - 1;
+    const prevYear = last === 1 ? y - 1 : y;
+    return { y: y, last: last, prev: prev, prevYear: prevYear };
+  }
+
+  function kpi(rows) {
+    const n = rows.length;
+    if (!n) return { n: 0, avg: null, n1: 0, n5: 0, n12: 0 };
+    let s = 0, n1 = 0, n5 = 0, n12 = 0;
+    for (let i = 0; i < n; i++) {
+      const r = rows[i].r;
+      s += r;
+      if (r === 1) n1++;
+      if (r === 5) n5++;
+      if (r === 1 || r === 2) n12++;
+    }
+    return { n: n, avg: s / n, n1: n1, n5: n5, n12: n12 };
+  }
+
+  function tile(n, label, delta) {
+    return '<div class="tile"><div class="n">' + n + '</div><div class="l">' + esc(label) + "</div>" +
+      (delta ? '<div class="d">' + delta + "</div>" : "") + "</div>";
+  }
+
+  function renderTiles() {
+    const p = period();
+    const rows = filteredReviews();
+    const ytd = rows.filter(function (r) { return r.mo <= p.last; });
+    const lm = rows.filter(function (r) { return r.mo === p.last; });
+    let pm;
+    if (p.last === 1) {
+      pm = D.reviews.filter(function (r) {
+        return r.y === p.prevYear && r.mo === 12 && marketOk(r.m) && locOk(r.loc);
+      });
+    } else {
+      pm = rows.filter(function (r) { return r.mo === p.prev; });
+    }
+    const a = kpi(ytd), b = kpi(lm), c = kpi(pm);
+    $("ytdTiles").innerHTML =
+      tile(fmt(a.n), "Number of Reviews") +
+      tile(avgTxt(a.avg), "Avg. Rating") +
+      tile(fmt(a.n1), "1★ Reviews") +
+      tile(fmt(a.n5), "5★ Reviews");
+    $("lmTitle").textContent = "Last Month Summary — " + MN[p.last] + " " + p.y;
+    $("lmTiles").innerHTML =
+      tile(fmt(b.n), "Number of Reviews", deltaHtml(b.n, c.n, false)) +
+      tile(avgTxt(b.avg), "Avg. Rating", deltaHtml(b.avg, c.avg, true)) +
+      tile(fmt(b.n1), "1★ Reviews", deltaHtml(b.n1, c.n1, false)) +
+      tile(fmt(b.n5), "5★ Reviews", deltaHtml(b.n5, c.n5, false));
+    // Report date = build date (date only)
+    const built = (D.meta && D.meta.built) ? String(D.meta.built).slice(0, 10) : "";
+    $("subtitle").textContent = built ? ("Report Date: " + built) : "";
+  }
+
+  function locAgg(rows, last, prev) {
+    const map = {};
+    rows.forEach(function (r) {
+      const k = r.loc;
+      if (!map[k]) map[k] = { loc: k, m: r.m, n: 0, s: 0, n5: 0, n12: 0, ln: 0, ls: 0, l5: 0, l12: 0, pn: 0, ps: 0 };
+      const o = map[k];
+      if (r.mo <= last) {
+        o.n++; o.s += r.r;
+        if (r.r === 5) o.n5++;
+        if (r.r <= 2) o.n12++;
+      }
+      if (r.mo === last) {
+        o.ln++; o.ls += r.r;
+        if (r.r === 5) o.l5++;
+        if (r.r <= 2) o.l12++;
+      }
+      if (r.mo === prev) { o.pn++; o.ps += r.r; }
+    });
+    return Object.keys(map).map(function (k) { return map[k]; })
+      .filter(function (o) { return o.n > 0; })
+      .sort(function (a, b) { return b.n - a.n || a.loc.localeCompare(b.loc); }).slice(0, 20);
+  }
+
+  function dlt(cur, base) {
+    if (cur == null || base == null) return '<span class="flat">—</span>';
+    const d = cur - base;
+    if (Math.abs(d) < 0.005) return '<span class="flat">■ +0.00</span>';
+    const cls = d > 0 ? "up" : "down";
+    return '<span class="' + cls + '">' + (d > 0 ? "▲ +" : "▼ ") + d.toFixed(2) + "</span>";
+  }
+
+  function mktAgg(rows, last, prev) {
+    const map = {};
+    rows.forEach(function (r) {
+      const k = r.m;
+      if (!map[k]) map[k] = { m: k, n: 0, s: 0, n5: 0, n12: 0, ln: 0, ls: 0, l5: 0, l12: 0, pn: 0, ps: 0 };
+      const o = map[k];
+      if (r.mo <= last) {
+        o.n++; o.s += r.r;
+        if (r.r === 5) o.n5++;
+        if (r.r <= 2) o.n12++;
+      }
+      if (r.mo === last) {
+        o.ln++; o.ls += r.r;
+        if (r.r === 5) o.l5++;
+        if (r.r <= 2) o.l12++;
+      }
+      if (r.mo === prev) { o.pn++; o.ps += r.r; }
+    });
+    return Object.keys(map).map(function (k) { return map[k]; })
+      .sort(function (a, b) { return b.ln - a.ln || a.m.localeCompare(b.m); });
+  }
+
+  function renderMarketTable() {
+    const p = period();
+    const y = p.y;
+    const rows = D.reviews.filter(function (r) {
+      return r.y === y && marketOk(r.m) && locOk(r.loc);
+    });
+    // prior month may be previous calendar year
+    let prevRows = [];
+    if (p.last === 1) {
+      prevRows = D.reviews.filter(function (r) {
+        return r.y === p.prevYear && r.mo === 12 && marketOk(r.m) && locOk(r.loc);
+      });
+    }
+    const list = mktAgg(rows, p.last, p.prev);
+    if (p.last === 1) {
+      const pm = {};
+      prevRows.forEach(function (r) {
+        if (!pm[r.m]) pm[r.m] = { n: 0, s: 0 };
+        pm[r.m].n++; pm[r.m].s += r.r;
+      });
+      list.forEach(function (o) {
+        if (pm[o.m]) { o.pn = pm[o.m].n; o.ps = pm[o.m].s; }
+      });
+    }
+    const lmLab = MN[p.last].toUpperCase();
+    let html = "<thead><tr>" +
+      "<th>Market</th>" +
+      "<th class='r'>YTD Reviews</th><th class='r'>AVG YTD</th>" +
+      "<th class='r'>" + lmLab + "</th><th class='r'>AVG " + lmLab + "</th>" +
+      "<th class='r'>Δ vs prior</th><th class='r'>5★ " + lmLab + "</th><th class='r'>1–2★ " + lmLab + "</th>" +
+      "</tr></thead><tbody>";
+    if (!list.length) {
+      $("mktTable").innerHTML = "<tbody><tr><td>No markets in this filter.</td></tr></tbody>";
+      return;
+    }
+    list.forEach(function (o) {
+      const ya = avg(o.n, o.s);
+      const la = avg(o.ln, o.ls);
+      const pa = avg(o.pn, o.ps);
+      html += "<tr>" +
+        "<td><b>" + esc(o.m) + "</b></td>" +
+        '<td class="r"><b>' + fmt(o.n) + "</b></td>" +
+        '<td class="r">' + avgTxt(ya) + "</td>" +
+        '<td class="r"><b>' + fmt(o.ln) + "</b></td>" +
+        '<td class="r ' + rateCls(la) + '">' + avgTxt(la) + "</td>" +
+        '<td class="r">' + (o.ln && o.pn ? dlt(la, pa) : '<span class="flat">—</span>') + "</td>" +
+        '<td class="r">' + fmt(o.l5) + "</td>" +
+        '<td class="r ' + (o.l12 ? "rate-r" : "rate-g") + '">' + fmt(o.l12) + "</td>" +
+        "</tr>";
+    });
+    html += "</tbody>";
+    $("mktTable").innerHTML = html;
+  }
+
+  function renderFunctionTable() {
+    const p = period();
+    const y = p.y;
+    const rows = D.reviews.filter(function (r) {
+      return r.y === y && marketOk(r.m) && locOk(r.loc);
+    });
+    const map = {};
+    FN_OPTIONS.forEach(function (fn) {
+      map[fn] = { fn: fn, ln: 0, ls: 0, pn: 0, ps: 0, l12: 0 };
+    });
+    rows.forEach(function (r) {
+      const fns = effectiveFunctions(r.loc);
+      if (!fns.length) return;
+      fns.forEach(function (fn) {
+        if (!map[fn]) return;
+        if (r.mo === p.last) {
+          map[fn].ln++; map[fn].ls += r.r;
+          if (r.r <= 2) map[fn].l12++;
+        }
+        if (r.mo === p.prev) { map[fn].pn++; map[fn].ps += r.r; }
+      });
+    });
+    if (p.last === 1) {
+      D.reviews.forEach(function (r) {
+        if (r.y !== p.prevYear || r.mo !== 12 || !marketOk(r.m) || !locOk(r.loc)) return;
+        effectiveFunctions(r.loc).forEach(function (fn) {
+          if (!map[fn]) return;
+          map[fn].pn++; map[fn].ps += r.r;
+        });
+      });
+    }
+    const list = FN_OPTIONS.map(function (fn) { return map[fn]; })
+      .filter(function (o) { return o.ln > 0 || o.pn > 0; });
+    const lmLab = MN[p.last].toUpperCase();
+    let html = "<thead><tr>" +
+      "<th>Location Function</th>" +
+      "<th class='r'>" + lmLab + " reviews</th><th class='r'>AVG " + lmLab + "</th>" +
+      "<th class='r'>Prior reviews</th><th class='r'>Δ rating vs prior</th><th class='r'>1–2★ " + lmLab + "</th>" +
+      "</tr></thead><tbody>";
+    if (!list.length) {
+      $("fnTable").innerHTML = "<tbody><tr><td>No function volume in this filter.</td></tr></tbody>";
+      return;
+    }
+    list.forEach(function (o) {
+      const la = avg(o.ln, o.ls);
+      const pa = avg(o.pn, o.ps);
+      html += "<tr>" +
+        "<td><b>" + esc(o.fn) + "</b></td>" +
+        '<td class="r"><b>' + fmt(o.ln) + "</b></td>" +
+        '<td class="r ' + rateCls(la) + '">' + avgTxt(la) + "</td>" +
+        '<td class="r">' + fmt(o.pn) + "</td>" +
+        '<td class="r">' + (o.ln && o.pn ? dlt(la, pa) : '<span class="flat">—</span>') + "</td>" +
+        '<td class="r ' + (o.l12 ? "rate-r" : "rate-g") + '">' + fmt(o.l12) + "</td>" +
+        "</tr>";
+    });
+    html += "</tbody>";
+    $("fnTable").innerHTML = html;
+  }
+
+  function renderTable() {
+    const p = period();
+    const y = p.y;
+    const rows = D.reviews.filter(function (r) {
+      return r.y === y && marketOk(r.m) && locOk(r.loc);
+    });
+    const list = locAgg(rows, p.last, p.prev);
+    const totN = list.reduce(function (s, o) { return s + o.n; }, 0);
+    const totS = list.reduce(function (s, o) { return s + o.s; }, 0);
+    const totLN = list.reduce(function (s, o) { return s + o.ln; }, 0);
+    const totLS = list.reduce(function (s, o) { return s + o.ls; }, 0);
+    const netYtd = avg(totN, totS);
+    const netLm = avg(totLN, totLS);
+    const lmLab = MN[p.last].toUpperCase();
+    let html = "<thead>";
+    html += '<tr><th colspan="2"></th><th class="grp" colspan="3">YTD</th><th></th><th class="grp" colspan="4">Current Month</th><th></th><th class="grp" colspan="4">Star Rating</th></tr>';
+    html += "<tr>" +
+      "<th class='c'>Rank</th><th>Location</th>" +
+      "<th class='r'>YTD Reviews</th><th class='r'>AVG YTD</th><th class='r'>Δ vs avg</th><th></th>" +
+      "<th class='r'>" + lmLab + "</th><th class='r'>AVG " + lmLab + "</th><th class='r'>Δ vs prior</th><th class='r'>Δ vs " + lmLab + " avg</th><th></th>" +
+      "<th class='r'>5★ YTD</th><th class='r'>5★ " + lmLab + "</th><th class='r'>1–2★ YTD</th><th class='r'>1–2★ " + lmLab + "</th>" +
+      "</tr></thead><tbody>";
+    list.forEach(function (o, i) {
+      const ya = avg(o.n, o.s);
+      const la = avg(o.ln, o.ls);
+      const pa = avg(o.pn, o.ps);
+      html += "<tr>" +
+        '<td class="c">' + (i + 1) + "</td>" +
+        "<td>" + esc(o.loc) + "</td>" +
+        '<td class="r"><b>' + fmt(o.n) + "</b></td>" +
+        '<td class="r">' + avgTxt(ya) + "</td>" +
+        '<td class="r">' + dlt(ya, netYtd) + "</td><td></td>" +
+        '<td class="r"><b>' + fmt(o.ln) + "</b></td>" +
+        '<td class="r ' + rateCls(la) + '">' + avgTxt(la) + "</td>" +
+        '<td class="r">' + (o.ln && o.pn ? dlt(la, pa) : '<span class="flat">—</span>') + "</td>" +
+        '<td class="r">' + dlt(la, netLm) + "</td><td></td>" +
+        '<td class="r">' + fmt(o.n5) + "</td>" +
+        '<td class="r">' + fmt(o.l5) + "</td>" +
+        '<td class="r">' + fmt(o.n12) + "</td>" +
+        '<td class="r ' + (o.l12 ? "rate-r" : "rate-g") + '">' + fmt(o.l12) + "</td>" +
+        "</tr>";
+    });
+    html += "</tbody>";
+    $("locTable").innerHTML = html || "<tbody><tr><td>No locations in this filter.</td></tr></tbody>";
+  }
+
+  function renderEmployees() {
+    const p = period();
+    const y = p.y;
+    const map = {};
+    D.employees.forEach(function (e) {
+      if (e.y !== y || e.mo > p.last) return;
+      if (!marketOk(e.m)) return;
+      if (!locOk(e.loc)) return;
+      const k = e.name + "||" + e.loc;
+      if (!map[k]) map[k] = { name: e.name, loc: e.loc, n: 0 };
+      map[k].n += e.n;
+    });
+    const list = Object.keys(map).map(function (k) { return map[k]; })
+      .sort(function (a, b) { return b.n - a.n || a.name.localeCompare(b.name); })
+      .slice(0, 10);
+    if (!list.length) {
+      $("empTable").innerHTML = "<tbody><tr><td>No named employees in 4–5★ reviews for this filter.</td></tr></tbody>";
+      return;
+    }
+    $("empTable").innerHTML = "<tbody>" + list.map(function (e, i) {
+      return "<tr><td class='rk'>" + (i + 1) + "</td>" +
+        "<td class='nm'><b>" + esc(e.name) + "</b><div class='lc'>" + esc(e.loc) + "</div></td>" +
+        "<td class='ct'>" + e.n + "</td></tr>";
+    }).join("") + "</tbody>";
+  }
+
+  function revCard(c) {
+    const dt = c.d ? c.d.slice(8, 10) + " " + MN[+c.d.slice(5, 7)] + " " + c.d.slice(0, 4) : "";
+    return '<div class="rev">' +
+      "<div>" + stars(c.r) + ' <span class="who">' + c.r + " of 5</span>" +
+      '<span class="who" style="float:right">' + esc(dt) + "</span></div>" +
+      '<div style="margin-top:4px"><b style="color:var(--accent)">' + esc(c.reviewer || "Customer") + "</b>" +
+      ' <span class="who">· ' + esc(c.loc) + (c.m ? " · " + esc(c.m) : "") + "</span></div>" +
+      '<div class="quote">“' + esc(c.comment || "(no comment provided)") + "”</div></div>";
+  }
+
+  function renderSentiment() {
+    const loc = singleSelectedLocation();
+    const p = period();
+    const box = $("sentimentBlock");
+    const themeRows = (D.themes || []).filter(function (t) {
+      if (t.y !== p.y || t.mo !== p.last) return false;
+      if (loc) return t.loc === loc;
+      return marketOk(t.m || LOC_MKT[t.loc]) && locOk(t.loc);
+    });
+    let themes;
+    if (loc) {
+      themes = themeRows.sort(function (a, b) { return b.n - a.n; }).slice(0, 8);
+    } else {
+      const agg = {};
+      themeRows.forEach(function (t) {
+        if (!agg[t.theme]) agg[t.theme] = { theme: t.theme, n: 0, quote: "", reviewer: "", loc: "" };
+        agg[t.theme].n += t.n;
+        if (!agg[t.theme].quote && t.quote) {
+          agg[t.theme].quote = t.quote;
+          agg[t.theme].reviewer = t.reviewer;
+          agg[t.theme].loc = t.loc;
+        }
+      });
+      themes = Object.keys(agg).map(function (k) { return agg[k]; })
+        .sort(function (a, b) { return b.n - a.n; }).slice(0, 8);
+    }
+
+    function commentFilter(pred) {
+      return (D.comments || []).filter(function (c) {
+        if (c.y !== p.y || c.mo !== p.last) return false;
+        if (!pred(c)) return false;
+        if (loc) return c.loc === loc;
+        return marketOk(c.m) && locOk(c.loc);
+      }).sort(function (a, b) { return a.d.localeCompare(b.d); });
+    }
+    const c45 = commentFilter(function (c) { return c.r >= 4; });
+    const c3 = commentFilter(function (c) { return c.r === 3; });
+    const c12 = commentFilter(function (c) { return c.r <= 2; });
+    const cap = loc ? 9999 : 25;
+
+    let html = "";
+    html += "<h2>Customer Feedback</h2><div class='rule'></div>";
+
+    html += "<h2>What's Working — Themes from 4–5★ Reviews (" + MN[p.last] + " " + p.y + ")</h2><div class='rule'></div>";
+    if (!themes.length) html += '<div class="locked">No 4–5★ theme matches for this filter in the selected month.</div>';
+    else html += '<div style="border-top:2px solid var(--accent)">' + themes.map(function (t) {
+      return '<div class="theme"><b>' + esc(t.theme) + '</b> <span class="who">(' + t.n + " mentions)</span>" +
+        (t.quote ? '<div class="quote">“' + esc(t.quote) + '”</div><div class="who">— ' + esc(t.reviewer || "Customer") + " · " + esc(t.loc || "") + "</div>" : "") +
+        "</div>";
+    }).join("") + "</div>";
+
+    if (loc) {
+      html += "<h2>4–5★ Comments (" + MN[p.last] + " " + p.y + ")</h2><div class='rule'></div>";
+      if (!c45.length) html += '<div class="locked">No 4–5★ written comments for this location in the selected month.</div>';
+      else html += '<div style="border-top:2px solid var(--accent)">' + c45.map(revCard).join("") + "</div>";
+    }
+
+    html += "<h2>Opportunities To Improve — 3★ Comments (" + MN[p.last] + " " + p.y + ")</h2><div class='rule'></div>";
+    if (!c3.length) html += '<div class="locked">No 3★ comments for this filter in the selected month.</div>';
+    else html += '<div style="border-top:2px solid var(--accent)">' + c3.slice(0, cap).map(revCard).join("") + "</div>";
+
+    html += "<h2>Reviews to Action — 1–2★ Comments (" + MN[p.last] + " " + p.y + ")</h2><div class='rule'></div>";
+    if (!c12.length) html += '<div class="locked">No 1–2★ comments for this filter in the selected month.</div>';
+    else html += '<div style="border-top:2px solid var(--accent)">' + c12.slice(0, cap).map(revCard).join("") + "</div>";
+
+    box.innerHTML = html;
+  }
+
+  function starLabel(v) {
+    if (v == null || isNaN(v)) return "—";
+    return v.toFixed(2) + "★";
+  }
+
+  /** Full location name in narrative text. */
+  function shortLoc(name) {
+    return name || "";
+  }
+
+  function renderExec() {
+    const p = period();
+    const y = p.y;
+    const moName = MN[p.last];
+    const prevName = MN[p.prev];
+    const rows = D.reviews.filter(function (r) {
+      return r.y === y && marketOk(r.m) && locOk(r.loc);
+    });
+    const ytd = rows.filter(function (r) { return r.mo <= p.last; });
+    const lm = rows.filter(function (r) { return r.mo === p.last; });
+    let pm;
+    if (p.last === 1) {
+      pm = D.reviews.filter(function (r) {
+        return r.y === p.prevYear && r.mo === 12 && marketOk(r.m) && locOk(r.loc);
+      });
+    } else {
+      pm = rows.filter(function (r) { return r.mo === p.prev; });
+    }
+    const a = kpi(ytd), b = kpi(lm), c = kpi(pm);
+    const box = $("execBox");
+
+    if (!a.n && !b.n) {
+      box.innerHTML = "<p>No reviews in the current filter for " + esc(moName) + " " + y + ".</p>";
+      return;
+    }
+
+    const scope = selectedMarketsLabel();
+    const mSel = fM.getSelected();
+    const avgLabel = (mSel.length === 1)
+      ? (mSel[0] + " average")
+      : (scope === "All markets" ? "network average" : "filter average");
+    const scopeBit = (scope === "All markets")
+      ? "the selected network"
+      : (mSel.length === 1 ? mSel[0] : scope);
+
+    const paras = [];
+
+    // YTD opener
+    const fiveShare = a.n ? Math.round((a.n5 / a.n) * 100) : 0;
+    paras.push(
+      "YTD, " + scopeBit + " has collected " +
+      fmt(a.n) + " Google review" + (a.n === 1 ? "" : "s") +
+      " with an average of " + starLabel(a.avg) +
+      (a.n5 ? ", including " + fmt(a.n5) + " five-star review" + (a.n5 === 1 ? "" : "s") +
+        " (" + fiveShare + "%)" : "") + "."
+    );
+
+    // Month vs prior
+    if (b.n) {
+      let mo = "In " + moName + ", the network received " + fmt(b.n) + " review" + (b.n === 1 ? "" : "s");
+      if (c.n) {
+        const vDelta = b.n - c.n;
+        mo += " — " + (vDelta === 0
+          ? "in line with " + fmt(c.n) + " in " + prevName
+          : (vDelta < 0 ? "down" : "up") + " from " + fmt(c.n) + " in " + prevName);
+        mo += ". ";
+        if (b.avg != null && c.avg != null) {
+          const rDelta = b.avg - c.avg;
+          if (Math.abs(rDelta) < 0.005) {
+            mo += "The average rating held at " + starLabel(b.avg) + ".";
+          } else if (rDelta > 0) {
+            mo += (vDelta < 0 ? "While volume softened, the average rating improved to " : "The average rating improved to ") +
+              starLabel(b.avg) + ", up +" + rDelta.toFixed(2) + " from the previous month.";
+          } else {
+            mo += "The average rating moved to " + starLabel(b.avg) +
+              ", " + rDelta.toFixed(2) + " versus " + prevName + ".";
+          }
+        } else {
+          mo += "Average rating: " + starLabel(b.avg) + ".";
+        }
+      } else {
+        mo += " at an average of " + starLabel(b.avg) + ".";
+      }
+      paras.push(mo);
+    }
+
+    // Location standouts for the month
+    const locMap = {};
+    rows.forEach(function (r) {
+      if (!locMap[r.loc]) {
+        locMap[r.loc] = { loc: r.loc, m: r.m, yn: 0, ys: 0, ln: 0, ls: 0, pn: 0, ps: 0, l12: 0 };
+      }
+      const o = locMap[r.loc];
+      if (r.mo <= p.last) { o.yn++; o.ys += r.r; }
+      if (r.mo === p.last) {
+        o.ln++; o.ls += r.r;
+        if (r.r <= 2) o.l12++;
+      }
+      if (r.mo === p.prev) { o.pn++; o.ps += r.r; }
+    });
+    if (p.last === 1) {
+      pm.forEach(function (r) {
+        if (!locMap[r.loc]) return;
+        locMap[r.loc].pn++; locMap[r.loc].ps += r.r;
+      });
+    }
+    const locs = Object.keys(locMap).map(function (k) { return locMap[k]; });
+    locs.forEach(function (o) {
+      o.yAvg = avg(o.yn, o.ys);
+      o.lAvg = avg(o.ln, o.ls);
+      o.pAvg = avg(o.pn, o.ps);
+    });
+
+    // Benchmark = filter/network month average (e.g. GB CPO Jul avg), not a fixed 4.50.
+    const bench = b.avg;
+    const moLocs = locs.filter(function (o) { return o.ln >= 2; });
+    const ytdMin = locs.length <= 4 ? 5 : 10;
+
+    // Positives: most YTD reviews; highest month score; largest rating jump; volume gainer
+    const mostReviews = locs.filter(function (o) { return o.yn >= ytdMin; })
+      .slice().sort(function (a, b) { return b.yn - a.yn || (b.yAvg || 0) - (a.yAvg || 0); })[0];
+    const bestScore = moLocs.filter(function (o) { return o.ln >= 3 && o.lAvg != null; })
+      .slice().sort(function (a, b) { return b.lAvg - a.lAvg || b.ln - a.ln; })[0];
+    const rateJump = moLocs.filter(function (o) { return o.pn >= 2 && o.lAvg != null && o.pAvg != null; })
+      .map(function (o) { return { loc: o.loc, ln: o.ln, la: o.lAvg, pa: o.pAvg, d: o.lAvg - o.pAvg }; })
+      .filter(function (o) { return o.d >= 0.25; })
+      .sort(function (a, b) { return b.d - a.d; })[0];
+    const volGain = moLocs.slice().sort(function (a, b) {
+      return (b.ln - b.pn) - (a.ln - a.pn) || b.ln - a.ln;
+    }).filter(function (o) { return (o.ln - o.pn) >= 2; })[0];
+
+    // Negatives: month score below filter average (min volume); thin volume is separate
+    const belowAvg = moLocs.filter(function (o) {
+      return o.lAvg != null && bench != null && o.lAvg < bench - 0.01;
+    }).sort(function (a, b) { return a.lAvg - b.lAvg; });
+
+    const oneLoc = singleSelectedLocation();
+    const mentioned = {}; // loc -> true once used in a highlight sentence
+
+    function mark(loc) { if (loc) mentioned[loc] = true; }
+    function unused(loc) { return loc && !mentioned[loc]; }
+
+    if (oneLoc) {
+      const o = locMap[oneLoc];
+      if (o && o.yn) {
+        let bit = esc(oneLoc) + " received " + starLabel(o.yAvg) + " from " + fmt(o.yn) +
+          " review" + (o.yn === 1 ? "" : "s") + " so far this year";
+        if (o.ln && o.lAvg != null) {
+          bit += ". In " + moName + ", " + fmt(o.ln) + " review" + (o.ln === 1 ? "" : "s") +
+            " averaged " + starLabel(o.lAvg);
+          if (o.pn >= 2 && o.pAvg != null) {
+            const d = o.lAvg - o.pAvg;
+            if (Math.abs(d) >= 0.05) bit += " (" + (d >= 0 ? "+" : "") + d.toFixed(2) + " vs " + prevName + ")";
+          }
+          if (bench != null && o.lAvg < bench - 0.01) {
+            bit += " — below the " + avgLabel + " of " + starLabel(bench);
+          } else if (o.lAvg >= 4.95) {
+            bit += ", reaching a perfect " + starLabel(o.lAvg) + " for the month";
+          }
+        }
+        if (o.ln && o.pn && (o.ln - o.pn) >= 2) {
+          bit += ", with review volume up +" + fmt(o.ln - o.pn) + " versus " + prevName;
+        }
+        bit += ".";
+        paras.push(bit);
+      }
+    } else {
+      // --- Mixed: most reviews YTD but month score below filter average ---
+      if (mostReviews && mostReviews.ln >= 2 && mostReviews.lAvg != null &&
+          bench != null && mostReviews.lAvg < bench - 0.01) {
+        paras.push(
+          esc(mostReviews.loc) + " received the most reviews YTD (" + fmt(mostReviews.yn) +
+          ") but its " + moName + " average of " + starLabel(mostReviews.lAvg) +
+          " slipped below the " + avgLabel + " (" + starLabel(bench) + ")."
+        );
+        mark(mostReviews.loc);
+      } else if (mostReviews) {
+        // Volume leader only if not a quality problem this month
+        let volLine = esc(mostReviews.loc) + " collected the most reviews YTD (" +
+          fmt(mostReviews.yn) + " @ " + starLabel(mostReviews.yAvg) + ")";
+        if (mostReviews.ln && mostReviews.lAvg != null) {
+          volLine += ", averaging " + starLabel(mostReviews.lAvg) + " across " +
+            fmt(mostReviews.ln) + " in " + moName;
+        }
+        volLine += ".";
+        paras.push(volLine);
+        mark(mostReviews.loc);
+      }
+
+      // --- True positives: highest score / rating jump / volume gain (skip already-mentioned) ---
+      const posBits = [];
+      if (bestScore && unused(bestScore.loc) && bestScore.lAvg != null &&
+          (bench == null || bestScore.lAvg >= bench - 0.01)) {
+        posBits.push(
+          esc(bestScore.loc) + " posted the strongest " + moName + " rating (" +
+          starLabel(bestScore.lAvg) + " from " + fmt(bestScore.ln) + " review" +
+          (bestScore.ln === 1 ? "" : "s") + ")"
+        );
+        mark(bestScore.loc);
+      }
+      if (rateJump && unused(rateJump.loc)) {
+        posBits.push(
+          esc(rateJump.loc) + " delivered the largest rating jump (+" + rateJump.d.toFixed(2) +
+          ")" + (rateJump.la >= 4.95 ? ", reaching a perfect " + starLabel(rateJump.la) + " for the month" : "")
+        );
+        mark(rateJump.loc);
+      }
+      if (volGain && unused(volGain.loc) && (volGain.ln - volGain.pn) >= 2) {
+        posBits.push(
+          esc(volGain.loc) + " saw the biggest increase in review volume (+" +
+          fmt(volGain.ln - volGain.pn) + ")"
+        );
+        mark(volGain.loc);
+      }
+      if (posBits.length === 1) {
+        paras.push(posBits[0] + ".");
+      } else if (posBits.length > 1) {
+        paras.push(
+          posBits.slice(0, -1).join("; ") + "; and " + posBits[posBits.length - 1] + "."
+        );
+      }
+
+      // --- Negatives: below filter average, never re-list mixed volume leader ---
+      const weakOnly = belowAvg.filter(function (o) { return unused(o.loc); }).slice(0, 4);
+      if (weakOnly.length) {
+        const names = weakOnly.map(function (o) {
+          return shortLoc(o.loc) + " (" + starLabel(o.lAvg) + ")";
+        });
+        const list = names.length === 1 ? names[0]
+          : names.length === 2 ? names[0] + " and " + names[1]
+          : names.slice(0, -1).join(", ") + ", and " + names[names.length - 1];
+        paras.push(
+          "On the flip side, " + list +
+          (weakOnly.length === 1 ? " averaged" : " all averaged") +
+          " below the " + avgLabel + " of " + starLabel(bench) +
+          " in " + moName + " and will need extra attention this month."
+        );
+        weakOnly.forEach(function (o) { mark(o.loc); });
+      }
+    }
+
+    // 1-2★ recovery + theme
+    if (b.n12) {
+      let low = "We also saw " + fmt(b.n12) + " one- and two-star review" +
+        (b.n12 === 1 ? "" : "s") + " in " + moName;
+      if (a.n12) low += " (" + fmt(a.n12) + " YTD)";
+      low += ". Each of these represents a clear recovery opportunity if the teams follow up quickly.";
+
+      // Simple theme cue from low-star comments
+      const lowComments = (D.comments || []).filter(function (cm) {
+        return cm.y === y && cm.mo === p.last && cm.r <= 2 && marketOk(cm.m) && locOk(cm.loc);
+      });
+      const themeHits = { "service / repair": 0, "delivery / collection": 0, "sales process": 0 };
+      lowComments.forEach(function (cm) {
+        const t = (cm.comment || "").toLowerCase();
+        if (/service|repair|workshop|warranty|technician|appointment/.test(t)) themeHits["service / repair"]++;
+        if (/deliver|collection|collect|handover|pick\s*up/.test(t)) themeHits["delivery / collection"]++;
+        if (/sales|test\s*drive|order|purchase|price|advisor/.test(t)) themeHits["sales process"]++;
+      });
+      let topTheme = null, topN = 0;
+      Object.keys(themeHits).forEach(function (k) {
+        if (themeHits[k] > topN) { topN = themeHits[k]; topTheme = k; }
+      });
+      if (topTheme && topN >= 2) {
+        low += " The most common theme in these lower reviews continues to be " + topTheme +
+          ", so I'd recommend sales leaders prioritise coaching in this area.";
+      }
+      paras.push(low);
+    }
+
+    // Positive theme closer
+    const posThemes = (D.themes || []).filter(function (t) {
+      return t.y === y && t.mo === p.last && marketOk(t.m || LOC_MKT[t.loc]) && locOk(t.loc);
+    });
+    const themeAgg = {};
+    posThemes.forEach(function (t) {
+      themeAgg[t.theme] = (themeAgg[t.theme] || 0) + t.n;
+    });
+    const topPos = Object.keys(themeAgg).map(function (k) { return { theme: k, n: themeAgg[k] }; })
+      .sort(function (a, b) { return b.n - a.n; })[0];
+    if (topPos && topPos.n >= 3) {
+      paras.push("On a positive note, " + topPos.theme.toLowerCase() +
+        " remains the standout theme in our feedback — a real testament to the strength of our front-line teams.");
+    }
+
+    // Function call-outs if weak (CPO / Delivery) — one short para
+    // Use effectiveFunctions so dual Centre+Delivery sites don't double-count.
+    const fnNotes = [];
+    const fnWeakDetail = [];
+    ["Certified Pre-Owned", "Delivery", "Service", "Collection Point", "Pop Up", "Centre", "Store"].forEach(function (fn) {
+      let ln = 0, ls = 0, l12 = 0;
+      lm.forEach(function (r) {
+        if (effectiveFunctions(r.loc).indexOf(fn) < 0) return;
+        ln++; ls += r.r; if (r.r <= 2) l12++;
+      });
+      if (ln < 3) return;
+      const la = avg(ln, ls);
+      if (la != null && bench != null && (la < bench - 0.05 || l12 >= 2)) {
+        fnNotes.push(fn + " (" + fmt(ln) + " reviews @ " + starLabel(la) +
+          (l12 ? ", " + fmt(l12) + " × 1–2★" : "") + ")");
+        fnWeakDetail.push({ fn: fn, ln: ln, la: la, l12: l12 });
+      }
+    });
+    if (fnNotes.length) {
+      paras.push("By location function, watch " +
+        (fnNotes.length === 1 ? fnNotes[0] : fnNotes.slice(0, -1).join("; ") + "; and " + fnNotes[fnNotes.length - 1]) +
+        " — worth a focused field follow-up this month.");
+    }
+
+    // ---- Call For Action: only when a single Location is selected ----
+    // Two sources only:
+    //   (1) score below country/market average OR dropped vs prior month
+    //   (2) themes in 1-3* written comments -> coachable suggestion questions
+    let html = paras.map(function (t) { return "<p>" + t + "</p>"; }).join("");
+
+    if (oneLoc) {
+      const o = locMap[oneLoc] || {};
+      const cfa = [];
+      const lowCom = (D.comments || []).filter(function (cm) {
+        return cm.loc === oneLoc && cm.y === y && cm.mo === p.last && cm.r <= 3 &&
+          cm.comment && cm.comment !== "(no comment provided)";
+      });
+
+      // Country (market) average for this site's market — e.g. GB average
+      const mktCode = o.m || LOC_MKT[oneLoc] || "";
+      let countryAvg = null;
+      if (mktCode) {
+        let cn = 0, cs = 0;
+        D.reviews.forEach(function (r) {
+          if (r.y !== y || r.mo !== p.last || r.m !== mktCode) return;
+          if (!isLeadershipDefaultLoc(r.loc)) return;
+          cn++; cs += r.r;
+        });
+        if (!cn) {
+          D.reviews.forEach(function (r) {
+            if (r.y === y && r.mo === p.last && r.m === mktCode) { cn++; cs += r.r; }
+          });
+        }
+        countryAvg = cn ? cs / cn : null;
+      }
+      const scoreBench = countryAvg != null ? countryAvg : bench;
+      const scoreBenchLabel = mktCode ? (mktCode + " average") : avgLabel;
+      const belowCountry = o.lAvg != null && scoreBench != null && o.lAvg < scoreBench - 0.01;
+      const droppedMoM = o.lAvg != null && o.pAvg != null && (o.ln || 0) >= 2 && (o.pn || 0) >= 2 &&
+        (o.lAvg - o.pAvg) <= -0.15;
+      const hasLowStars = lowCom.length > 0 || (o.l12 || 0) > 0;
+
+      if (belowCountry || droppedMoM || hasLowStars) {
+        // (1) Score triggers
+        if (belowCountry) {
+          cfa.push(
+            "Score: " + moName + " average is " + starLabel(o.lAvg) +
+            ", below the " + scoreBenchLabel + " of " + starLabel(scoreBench) +
+            " — coach quality of every interaction (scores are the lever; review volume is not)."
+          );
+        } else if (droppedMoM) {
+          cfa.push(
+            "Score: " + moName + " dropped " + (o.lAvg - o.pAvg).toFixed(2) +
+            " vs " + prevName + " (" + starLabel(o.lAvg) + " from " + starLabel(o.pAvg) +
+            ") — use the 1–3★ comments to reset standards this week."
+          );
+        }
+        if ((o.l12 || 0) >= 1) {
+          cfa.push(
+            "Recover " + fmt(o.l12) + " × 1–2★ customer" + (o.l12 === 1 ? "" : "s") +
+            " from " + moName + " (Reviews to Action) — site lead follow-up within 48 hours."
+          );
+        }
+
+        // (2) Comment themes → specific suggestion questions (specific patterns first)
+        // Multiple themes can fire from one comment (e.g. casual tone + vehicle not ready).
+        const themeQ = [
+          {
+            re: /pin[\s-]?to[\s-]?drive|pin to drive|can'?t (start|drive)|could not (go ahead|drive|start)|unable to (drive|start)|left in|vehicle (was |had been )?(not ready|locked|unavailable)/i,
+            q: "What pre-handover checks should Sales run on every test-drive car (digital key active, charged, clean, access working) so customers are never blocked from driving?"
+          },
+          {
+            re: /self[\s-]?serv(e|ice)\s*test\s*drive|test\s?drive/,
+            q: "How do we make every test-drive booking reliable end-to-end — car ready, key and access correct, and a named host if anything fails?"
+          },
+          {
+            re: /casual|informal|enquiry|inquiry|poor experience when|communication from the (dealership|centre|center|store|team)|came across as/i,
+            q: "How well is the Sales team communicating with clients on enquiries — professional tone, clear next steps, and a premium feel that matches the product?"
+          },
+          {
+            re: /communicat|excuse|defend|manager|email|call(?:ed|ing)?|phone|respond|reply|update|told me|wouldn'?t (help|listen)|zero help|customer service|shocking service|unsatisfactory/i,
+            q: "How effectively is the team communicating when something goes wrong — with clear ownership, timelines, and empathy?"
+          },
+          {
+            re: /service|repair|workshop|garage|technician|engineer|warranty|bodyshop|fracture|chip|glass|roof|quality of (the )?work|not fixed|stress fracture/i,
+            q: "Where can Service tighten workmanship and first-time fix so customers leave confident the issue is fully resolved?"
+          },
+          {
+            re: /sales|advisor|consultant|pressure|pushy|ignor|unattent|rude|attitude|waited|waiting|no one|staff|dealership/i,
+            q: "How can Sales raise attentiveness and hospitality on every enquiry and visit (greet, listen, follow up) so customers feel owned?"
+          },
+          {
+            re: /deliver|collection|collect|handover|pick\s*up|late|delay|not ready|registration|plates?/i,
+            q: "What would improve Delivery / collection readiness and handover communication so customers are not surprised on the day?"
+          },
+          {
+            re: /cpo|used|pre-?owned|refurb|trade[\s-]?in/i,
+            q: "For CPO journeys, where can we set clearer expectations on vehicle condition and aftersales support before the customer leaves?"
+          },
+          {
+            re: /charg|parking|facility|toilet|clean|dirty|wait room/i,
+            q: "Are site facilities (parking, charging, cleanliness) meeting the standard customers expect when they visit?"
+          }
+        ];
+        const hit = {};
+        lowCom.forEach(function (cm) {
+          const t = cm.comment || "";
+          // One comment can surface multiple coachable themes (e.g. tone + vehicle not ready).
+          for (let i = 0; i < themeQ.length; i++) {
+            if (themeQ[i].re.test(t)) hit[i] = (hit[i] || 0) + 1;
+          }
+        });
+        const ranked = Object.keys(hit).map(function (i) {
+          return { n: hit[i], q: themeQ[+i].q };
+        }).sort(function (a, b) { return b.n - a.n; });
+
+        ranked.slice(0, 3).forEach(function (th) {
+          cfa.push(th.q);
+        });
+
+        if (ranked.length === 0 && lowCom.length) {
+          cfa.push(
+            "Read every 1–3★ comment for this site in " + moName +
+            " together — what is the one behaviour or process change the team will own next week?"
+          );
+        }
+
+        while (cfa.length > 5) cfa.pop();
+        if (cfa.length) {
+          html += '<div class="exec-card"><h3>Call For Action</h3><ul>' +
+            cfa.map(function (t) { return "<li>" + t + "</li>"; }).join("") +
+            "</ul></div>";
+        }
+      }
+    }
+
+    // Landing note: Call For Action is location-level only
+    if (!oneLoc) {
+      html += '<p class="hint" style="margin-top:12px">Select a single <b>Location</b> to generate individual Call For Action prompts for that site (score vs country average, MoM movement, and themes from 1–3★ comments).</p>';
+    }
+
+    box.innerHTML = html;
+  }
+
+  function render() {
+    renderTiles();
+    renderExec();
+    renderMarketTable();
+    renderFunctionTable();
+    renderTable();
+    renderEmployees();
+    renderSentiment();
+    $("foot").textContent = "Source: " + D.meta.source + " · " +
+      D.meta.reviewCount.toLocaleString("en-GB") + " reviews · Built " + D.meta.built;
+  }
+
+  fY.addEventListener("change", function () { refreshMonths(); render(); });
+  fMo.addEventListener("change", render);
+
+  onFilterChange("init");
+  if (years.indexOf(defaultYear) >= 0) fY.value = String(defaultYear);
+  // Force incomplete-month-aware default (do not keep a partial latest calendar month).
+  refreshMonths();
+  if ([].some.call(fMo.options, function (o) { return o.value === defaultMonth; })) {
+    fMo.value = defaultMonth;
+  }
+  render();
+})();
+</script>
+<a href="../../" style="position:fixed;right:16px;bottom:16px;z-index:99999;background:#1b1a18;color:#f7f4ee;font:500 13px/1 system-ui,sans-serif;letter-spacing:.04em;padding:11px 16px;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.25)">&larr; Back to portfolio</a>
+</body>
+</html>
